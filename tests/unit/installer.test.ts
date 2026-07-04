@@ -3,6 +3,7 @@ import { EventEmitter } from "node:events";
 import { access, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { PassThrough } from "node:stream";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -441,21 +442,54 @@ describe("installNpmServer", () => {
     const runCommand = vi.fn(() => {
       const child = new EventEmitter();
       queueMicrotask(() => child.emit("exit", 0));
-      return child as ReturnType<typeof spawn>;
+      return child as unknown as ReturnType<typeof spawn>;
     }) as unknown as typeof spawn;
 
     const result = await installNpmServer(builtInServers.typescript, { installDir, runCommand });
 
     expect(runCommand).toHaveBeenCalledWith(
       "npm",
-      ["install", "--ignore-scripts", "--prefix", installDir, "typescript-language-server@5.3.0"],
-      { stdio: "ignore" },
+      [
+        "--userconfig",
+        join(installDir, ".lsp-mcp-npmrc"),
+        "install",
+        "--ignore-scripts",
+        "--prefix",
+        installDir,
+        "typescript-language-server@5.3.0",
+      ],
+      { stdio: ["ignore", "pipe", "pipe"] },
     );
     expect(result.command).toContain("typescript-language-server");
     expect(builtInServers.typescript.version).toBe("5.3.0");
     expect(builtInServers.json.version).toBe("4.10.0");
     expect(builtInServers["yaml-ls"].version).toBe("1.23.0");
     expect(builtInServers.pyright.version).toBe("1.1.409");
+  });
+
+  it("surfaces npm stderr when managed server installation fails", async () => {
+    const installDir = await makeTempDir();
+    const runCommand = vi.fn(() => {
+      const child = new EventEmitter() as EventEmitter & {
+        stdout: PassThrough;
+        stderr: PassThrough;
+      };
+      child.stdout = new PassThrough();
+      child.stderr = new PassThrough();
+      queueMicrotask(() => {
+        child.stderr.write(
+          "npm error code EALLOWSCRIPTS\nnpm error --allow-scripts is not allowed in project-scoped installs.\n",
+        );
+        child.emit("exit", 1);
+      });
+      return child as unknown as ReturnType<typeof spawn>;
+    }) as unknown as typeof spawn;
+
+    await expect(
+      installNpmServer(builtInServers.typescript, { installDir, runCommand }),
+    ).rejects.toThrow(
+      "npm install failed for typescript with exit code 1: npm error code EALLOWSCRIPTS",
+    );
   });
 });
 
