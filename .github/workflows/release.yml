@@ -13,7 +13,7 @@ permissions:
 
 env:
   # CI runs explicit quality gates; do not let Changesets' git pushes invoke
-  # Husky pre-push and start another pnpm verify in the release workspace.
+  # Husky hooks run in the release workspace.
   HUSKY: 0
 
 concurrency:

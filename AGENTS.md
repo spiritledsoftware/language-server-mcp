@@ -4,10 +4,10 @@
 
 - Use `pnpm` only; the repo pins `pnpm@11.2.2` and requires Node `>=22`.
 - Install with `pnpm install --frozen-lockfile` when matching CI.
-- Run the CI verification sequence as `pnpm run check:lsp-output-schemas`, `pnpm run lint`, `pnpm run typecheck`, `pnpm test`, `pnpm run build`, `pnpm run format:check`, then `npm pack --dry-run --json`.
+- Verify with targeted checks only: the test file you touched (one per run), `pnpm run typecheck`, and `oxfmt` and `oxlint` on the changed files. Do not run the whole suite, `pnpm run lint`, `pnpm run format:check` or `pnpm run build`; CI runs `check:lsp-output-schemas`, `lint`, `typecheck`, `test`, `build`, `format:check`, then `npm pack --dry-run --json`.
 - Run one test file with `pnpm test tests/unit/config.test.ts`; append `-t "name"` for a focused Vitest case.
 - Local dev uses `pnpm run dev` from `src/index.ts`; packaged/local MCP hosts must use `node /absolute/path/to/checkout/dist/index.js` after `pnpm run build`.
-- Pre-commit runs `format:check`, `lint`, and `typecheck`; pre-push also runs `test` and `build`.
+- Pre-commit runs `lint-staged` (`pnpm run lint:staged`: `oxfmt --check` and `oxlint` on staged files only). There is no pre-push hook; typecheck, tests and build are left to CI.
 
 ## Generated Files
 
