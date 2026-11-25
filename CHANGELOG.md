@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2
+
+### Patch Changes
+
+- e519bd2: Isolate managed npm language-server installs from user npm config and include npm output in install failures.
+
 ## 0.3.1
 
 ### Patch Changes
